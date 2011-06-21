@@ -207,7 +207,7 @@ class NormalAdminTests(NaniTestCase, BaseAdminTests, SuperuserMixin):
             with LanguageOverride('ja'):
                 response = self.client.post(url, data_ja)
                 self.assertEqual(response.status_code, 302)
-                self.assertEqual(Normal.objects.count(), 2)
+                self.assertEqual(Normal.objects.count(), 1)
             en = Normal.objects.get(language_code='en')
             self.assertEqual(en.shared_field, SHARED)
             self.assertEqual(en.translated_field, TRANS_EN)
@@ -227,7 +227,7 @@ class NormalAdminTests(NaniTestCase, BaseAdminTests, SuperuserMixin):
                 }
                 response = self.client.post("%s?language=en" % url, data)
                 self.assertEqual(response.status_code, 302)
-                self.assertEqual(Normal.objects.count(), 1)
+                self.assertEqual(Normal.objects.language('en').count(), 1)
                 obj = Normal.objects.language('en')[0]
                 self.assertEqual(obj.shared_field, SHARED)
                 self.assertEqual(obj.translated_field, TRANS)

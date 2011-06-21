@@ -374,6 +374,11 @@ class TranslationQueryset(QuerySet):
         """
         fieldnames = self._translate_fieldnames(field_names)
         return super(TranslationQueryset, self).order_by(*fieldnames)
+
+    def count(self):
+        if not self._language_code:
+            return self.language().count()
+        return super(TranslationQueryset, self).count()
     
     def reverse(self):
         return super(TranslationQueryset, self).reverse()

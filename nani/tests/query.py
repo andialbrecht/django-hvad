@@ -308,4 +308,19 @@ class ComplexFilterTests(NaniTestCase):
         qs = Normal.objects.language('en').complex_filter({})
         self.assertEqual(qs.count(), 1)
         self.assertRaises(NotImplementedError, Normal.objects.language('en').complex_filter, Q(shared_field=SHARED))
-    
+
+
+class CountTests(NaniTestCase, TwoTranslatedNormalMixin):
+
+    def test_count(self):
+        with LanguageOverride('en'):
+            self.assertEqual(Normal.objects.count(), 1)
+        with LanguageOverride('ja'):
+            self.assertEqual(Normal.objects.count(), 1)
+        with LanguageOverride('invalid'):
+            self.assertEqual(Normal.objects.count(), 0)
+            self.assertEqual(Normal.objects.untranslated().count(), 1)
+
+    def test_iter_and_count_identical(self):
+        # Make sure .count() on queries returns the correct row counts.
+        self.assertEqual(len(Normal.objects.all()), Normal.objects.all().count())
