@@ -1,4 +1,5 @@
 from django.core.exceptions import ImproperlyConfigured
+from django.conf import settings
 from django.db import models
 from django.db.models.base import ModelBase
 from django.db.models.signals import post_save
@@ -32,6 +33,8 @@ def create_translations_model(model, related_name, meta, **fields):
     meta['unique_together'] = list(meta.get('unique_together', [])) + unique
     # Create inner Meta class 
     Meta = type('Meta', (object,), meta)
+    if not hasattr(Meta, 'db_table'):
+        Meta.db_table = model._meta.db_table + '%stranslation' % getattr(settings, 'NANI_TABLE_NAME_SEPARATOR', '_')
     name = '%sTranslation' % model.__name__
     attrs = {}
     attrs.update(fields)
@@ -136,6 +139,9 @@ class TranslatableModelBase(ModelBase):
         
         return new_model
     
+
+class NoTranslation(object):
+    pass
 
 class TranslatableModel(models.Model):
     """
@@ -248,6 +254,25 @@ class TranslatableModel(models.Model):
         if not cache:
             return default
         return getattr(cache, name, default)
+
+    def lazy_translation_getter(self, name, default=None):
+        """
+        Lazy translation getter that fetches translations from DB in case the instance is currently untranslated and
+        saves the translation instance in the translation cache
+        """
+        cache = getattr(self, self._meta.translations_cache, NoTranslation)
+        trans = self._meta.translations_model.objects.filter(master__pk=self.pk)
+        if not cache and cache != NoTranslation and not trans.exists(): # check if there is no translations
+            return default
+        elif getattr(cache, name, NoTranslation) == NoTranslation and trans.exists(): # We have translations, but no specific translation cached
+            trans_in_own_language = trans.filter(language_code=get_language())
+            if trans_in_own_language.exists():
+                trans = trans_in_own_language[0]
+            else:
+                trans = trans[0]
+            setattr(self, self._meta.translations_cache, trans)
+            return getattr(trans, name)
+        return getattr(cache, name)
     
     def get_available_languages(self):
         manager = self._meta.translations_model.objects
